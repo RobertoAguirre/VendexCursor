@@ -6,9 +6,11 @@ import '../../../config/theme.dart';
 import 'steps/whatsapp_step.dart';
 import 'steps/stripe_step.dart';
 import 'steps/assistant_step.dart';
+import 'steps/products_step.dart';
+import 'steps/complete_step.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({Key? key}) : super(key: key);
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -17,7 +19,35 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
-  final int _totalSteps = 3;
+  bool _isLoading = false;
+
+  final List<Map<String, dynamic>> _steps = [
+    {
+      'title': 'WhatsApp',
+      'description': 'Conecta tu WhatsApp',
+      'icon': Icons.whatsapp,
+    },
+    {
+      'title': 'Pagos',
+      'description': 'Configura Stripe',
+      'icon': Icons.payment,
+    },
+    {
+      'title': 'Asistente',
+      'description': 'Personaliza tu IA',
+      'icon': Icons.smart_toy,
+    },
+    {
+      'title': 'Productos',
+      'description': 'Agrega tus productos',
+      'icon': Icons.inventory,
+    },
+    {
+      'title': '¡Listo!',
+      'description': 'Comienza a vender',
+      'icon': Icons.rocket_launch,
+    },
+  ];
 
   @override
   void dispose() {
@@ -26,7 +56,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextStep() {
-    if (_currentStep < _totalSteps - 1) {
+    if (_currentStep < _steps.length - 1) {
       setState(() {
         _currentStep++;
       });
@@ -50,49 +80,92 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _completeOnboarding() {
-    // TODO: Marcar onboarding como completado
+    // Marcar onboarding como completado
+    context.read<BusinessProvider>().markOnboardingComplete();
+    
+    // Navegar al dashboard
     Navigator.of(context).pushReplacementNamed('/dashboard');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Configuración Inicial'),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Column(
         children: [
-          // Progress bar
+          // Progress Bar
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             child: Column(
               children: [
+                // Step Indicators
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Paso ${_currentStep + 1} de $_totalSteps',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textSecondary,
+                  children: _steps.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final step = entry.value;
+                    final isActive = index == _currentStep;
+                    final isCompleted = index < _currentStep;
+
+                    return Expanded(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? Colors.green
+                                  : isActive
+                                      ? Theme.of(context).primaryColor
+                                      : Colors.grey.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isCompleted ? Icons.check : step['icon'],
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            step['title'],
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                              color: isActive ? Theme.of(context).primaryColor : Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      '${((_currentStep + 1) / _totalSteps * 100).round()}%',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+
+                // Progress Bar
+                LinearProgressIndicator(
+                  value: (_currentStep + 1) / _steps.length,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).primaryColor,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: (_currentStep + 1) / _totalSteps,
-                  backgroundColor: AppTheme.textLight.withOpacity(0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                Text(
+                  'Paso ${_currentStep + 1} de ${_steps.length}',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
@@ -102,27 +175,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Expanded(
             child: PageView(
               controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentStep = index;
-                });
-              },
+              physics: const NeverScrollableScrollPhysics(),
               children: [
-                // Paso 1: WhatsApp
+                // Step 1: WhatsApp
                 WhatsAppStep(
                   onNext: _nextStep,
+                  onPrevious: _previousStep,
                 ),
-                
-                // Paso 2: Stripe
+
+                // Step 2: Stripe
                 StripeStep(
                   onNext: _nextStep,
                   onPrevious: _previousStep,
                 ),
-                
-                // Paso 3: Asistente IA
+
+                // Step 3: Assistant
                 AssistantStep(
-                  onComplete: _completeOnboarding,
+                  onNext: _nextStep,
                   onPrevious: _previousStep,
+                ),
+
+                // Step 4: Products
+                ProductsStep(
+                  onNext: _nextStep,
+                  onPrevious: _previousStep,
+                ),
+
+                // Step 5: Complete
+                CompleteStep(
+                  onComplete: _completeOnboarding,
                 ),
               ],
             ),

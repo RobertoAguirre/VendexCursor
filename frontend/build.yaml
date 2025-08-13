@@ -1,0 +1,16 @@
+targets:
+  $default:
+    builders:
+      build_web_compilers|entrypoint:
+        options:
+          compiler: dart2js
+          dart2js_args:
+            - --fast-startup
+            - --minify
+            - --trust-primitives
+            - --trust-type-annotations
+            - --omit-implicit-checks
+            - --enable-asserts
+            - --csp
+            - --dump-info
+            - --verbose

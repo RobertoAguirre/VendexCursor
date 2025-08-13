@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'config/theme.dart';
@@ -18,11 +17,11 @@ void main() async {
   // Inicializar Hive
   await Hive.initFlutter();
   
-  runApp(const VendexClaudeApp());
+  runApp(const MyApp());
 }
 
-class VendexClaudeApp extends StatelessWidget {
-  const VendexClaudeApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -35,18 +34,18 @@ class VendexClaudeApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Vendex Claude',
-        debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
         home: const AppRouter(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
 }
 
 class AppRouter extends StatelessWidget {
-  const AppRouter({super.key});
+  const AppRouter({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

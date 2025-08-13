@@ -62,4 +62,16 @@ flutter:
         - asset: assets/fonts/Poppins-SemiBold.ttf
           weight: 600
         - asset: assets/fonts/Poppins-Bold.ttf
-          weight: 700 
+          weight: 700
+
+# Configuración para web
+flutter_web:
+  build:
+    dart2js_args:
+      - --fast-startup
+      - --minify
+      - --trust-primitives
+      - --trust-type-annotations
+      - --omit-implicit-checks
+      - --enable-asserts
+      - --csp 

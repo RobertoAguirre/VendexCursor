@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: vendex-claude-backend
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ULTRAMSG_INSTANCE_ID
+        sync: false
+      - key: ULTRAMSG_CLIENT_ID
+        sync: false
+      - key: ULTRAMSG_TOKEN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        value: https://vendex-claude.vercel.app
+    healthCheckPath: /health
+    autoDeploy: true
+    branch: main

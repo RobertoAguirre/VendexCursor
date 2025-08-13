@@ -1,6 +1,13 @@
 class ApiConfig {
-  // URL base de la API
-  static const String baseUrl = 'http://localhost:3000/api';
+  // URL base de la API - Configuración dinámica para desarrollo/producción
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000/api',
+  );
+  
+  // URLs de desarrollo y producción
+  static const String developmentUrl = 'http://localhost:3000/api';
+  static const String productionUrl = 'https://vendex-claude-backend.onrender.com/api';
   
   // Endpoints de autenticación
   static const String register = '/auth/register';
@@ -51,4 +58,25 @@ class ApiConfig {
   // Configuración de retry
   static const int maxRetries = 3;
   static const Duration retryDelay = Duration(seconds: 2);
+  
+  // Configuración de desarrollo
+  static const bool isDevelopment = bool.fromEnvironment('dart.vm.product') == false;
+  
+  // URLs de desarrollo y producción
+  static const String backendUrl = String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'http://localhost:3000',
+  );
+  static const String frontendUrl = String.fromEnvironment(
+    'FRONTEND_URL',
+    defaultValue: 'http://localhost:3000',
+  );
+  
+  // Método para obtener la URL base según el entorno
+  static String get apiBaseUrl {
+    if (isDevelopment) {
+      return developmentUrl;
+    }
+    return productionUrl;
+  }
 } 

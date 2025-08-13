@@ -36,10 +36,25 @@ const createTables = async () => {
         phone VARCHAR(20),
         business_type VARCHAR(100),
         description TEXT,
+        
+        -- Stripe Configuration (por negocio)
         stripe_secret_key VARCHAR(255),
         stripe_webhook_secret VARCHAR(255),
+        stripe_publishable_key VARCHAR(255),
+        
+        -- UltraMsg Configuration (por negocio)
         whatsapp_number VARCHAR(20),
+        ultramsg_instance_id VARCHAR(255),
+        ultramsg_token VARCHAR(255),
+        
+        -- AI Configuration (por negocio)
+        anthropic_api_key VARCHAR(255),
         assistant_personality TEXT,
+        
+        -- Status
+        is_active BOOLEAN DEFAULT true,
+        onboarding_completed BOOLEAN DEFAULT false,
+        
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -67,7 +82,9 @@ const createTables = async () => {
         id SERIAL PRIMARY KEY,
         business_id INTEGER REFERENCES businesses(id) ON DELETE CASCADE,
         customer_phone VARCHAR(20) NOT NULL,
+        customer_name VARCHAR(255),
         status VARCHAR(50) DEFAULT 'active',
+        total_messages INTEGER DEFAULT 0,
         last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         context JSONB DEFAULT '{}',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -93,14 +110,28 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS sales (
         id SERIAL PRIMARY KEY,
         business_id INTEGER REFERENCES businesses(id) ON DELETE CASCADE,
+        conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
         customer_phone VARCHAR(20) NOT NULL,
+        customer_name VARCHAR(255),
+        stripe_session_id VARCHAR(255),
+        stripe_payment_intent_id VARCHAR(255),
         amount DECIMAL(10,2) NOT NULL,
-        stripe_payment_id VARCHAR(255),
-        products JSONB NOT NULL,
+        currency VARCHAR(3) DEFAULT 'USD',
         status VARCHAR(50) DEFAULT 'pending',
+        products JSONB NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Índices para mejor rendimiento
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_businesses_email ON businesses(email);
+      CREATE INDEX IF NOT EXISTS idx_products_business_id ON products(business_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_business_id ON conversations(business_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_business_id ON sales(business_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status);
     `);
 
     console.log('✅ Tablas creadas/verificadas');

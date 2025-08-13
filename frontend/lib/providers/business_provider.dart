@@ -33,11 +33,13 @@ class BusinessProvider extends ChangeNotifier {
   BusinessStats? _stats;
   bool _isLoading = false;
   String? _error;
+  bool _onboardingCompleted = false;
 
   Business? get business => _business;
   BusinessStats? get stats => _stats;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get onboardingCompleted => _onboardingCompleted;
 
   Future<void> loadBusinessInfo() async {
     try {
@@ -55,13 +57,14 @@ class BusinessProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.get(
-        '${ApiConfig.baseUrl}${ApiConfig.business}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.business}',
         options: Options(headers: ApiConfig.authHeaders(token)),
       );
 
       if (response.statusCode == 200) {
         _business = Business.fromJson(response.data['business']);
         _stats = BusinessStats.fromJson(response.data['stats']);
+        _onboardingCompleted = _checkOnboardingStatus();
       }
     } catch (e) {
       _error = 'Error cargando información del negocio: $e';
@@ -69,6 +72,16 @@ class BusinessProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  bool _checkOnboardingStatus() {
+    if (_business == null) return false;
+    
+    // Verificar que tenga WhatsApp, Stripe, personalidad y al menos un producto
+    return _business!.whatsappNumber != null &&
+           _business!.stripeSecretKey != null &&
+           _business!.assistantPersonality != null &&
+           (_stats?.products ?? 0) > 0;
   }
 
   Future<bool> configureWhatsApp(String whatsappNumber) async {
@@ -87,7 +100,7 @@ class BusinessProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.post(
-        '${ApiConfig.baseUrl}${ApiConfig.whatsapp}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.whatsapp}',
         data: {'whatsapp_number': whatsappNumber},
         options: Options(headers: ApiConfig.authHeaders(token)),
       );
@@ -125,7 +138,7 @@ class BusinessProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.post(
-        '${ApiConfig.baseUrl}${ApiConfig.stripe}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.stripe}',
         data: {
           'stripe_secret_key': secretKey,
           'stripe_webhook_secret': webhookSecret,
@@ -163,7 +176,7 @@ class BusinessProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.post(
-        '${ApiConfig.baseUrl}${ApiConfig.assistantPersonality}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.assistantPersonality}',
         data: {'personality': personality},
         options: Options(headers: ApiConfig.authHeaders(token)),
       );
@@ -209,7 +222,7 @@ class BusinessProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.put(
-        '${ApiConfig.baseUrl}${ApiConfig.business}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.business}',
         data: data,
         options: Options(headers: ApiConfig.authHeaders(token)),
       );
@@ -226,6 +239,11 @@ class BusinessProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void markOnboardingComplete() {
+    _onboardingCompleted = true;
+    notifyListeners();
   }
 
   void clearError() {

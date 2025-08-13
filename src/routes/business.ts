@@ -14,7 +14,11 @@ const updateBusinessSchema = Joi.object({
   whatsapp_number: Joi.string().optional(),
   assistant_personality: Joi.string().optional(),
   stripe_secret_key: Joi.string().optional(),
-  stripe_webhook_secret: Joi.string().optional()
+  stripe_webhook_secret: Joi.string().optional(),
+  stripe_publishable_key: Joi.string().optional(),
+  ultramsg_instance_id: Joi.string().optional(),
+  ultramsg_token: Joi.string().optional(),
+  anthropic_api_key: Joi.string().optional()
 });
 
 // Obtener información del negocio
@@ -52,6 +56,8 @@ router.get('/', authenticateToken, async (req: any, res: Response) => {
         description: business.description,
         whatsapp_number: business.whatsapp_number,
         assistant_personality: business.assistant_personality,
+        is_active: business.is_active,
+        onboarding_completed: business.onboarding_completed,
         created_at: business.created_at
       },
       stats: {
@@ -85,7 +91,7 @@ router.put('/', authenticateToken, async (req: any, res: Response) => {
       `UPDATE businesses 
        SET ${updateFields}, updated_at = CURRENT_TIMESTAMP 
        WHERE id = $1 
-       RETURNING id, name, email, phone, business_type, description, whatsapp_number, assistant_personality, created_at, updated_at`,
+       RETURNING id, name, email, phone, business_type, description, whatsapp_number, assistant_personality, is_active, onboarding_completed, created_at, updated_at`,
       values
     );
     
@@ -133,24 +139,28 @@ router.post('/assistant-personality', authenticateToken, async (req: any, res: R
   }
 });
 
-// Configurar WhatsApp
+// Configurar WhatsApp y UltraMsg
 router.post('/whatsapp', authenticateToken, async (req: any, res: Response) => {
   try {
-    const { whatsapp_number } = req.body;
+    const { whatsapp_number, ultramsg_instance_id, ultramsg_token } = req.body;
     
     if (!whatsapp_number) {
       return res.status(400).json({ error: 'Número de WhatsApp requerido' });
     }
 
+    if (!ultramsg_instance_id || !ultramsg_token) {
+      return res.status(400).json({ error: 'Credenciales de UltraMsg requeridas' });
+    }
+
     const client = await pool.connect();
     await client.query(
-      'UPDATE businesses SET whatsapp_number = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-      [whatsapp_number, req.business.id]
+      'UPDATE businesses SET whatsapp_number = $1, ultramsg_instance_id = $2, ultramsg_token = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+      [whatsapp_number, ultramsg_instance_id, ultramsg_token, req.business.id]
     );
     client.release();
 
     res.json({
-      message: 'WhatsApp configurado exitosamente',
+      message: 'WhatsApp y UltraMsg configurados exitosamente',
       whatsapp_number
     });
 
@@ -163,7 +173,7 @@ router.post('/whatsapp', authenticateToken, async (req: any, res: Response) => {
 // Configurar Stripe
 router.post('/stripe', authenticateToken, async (req: any, res: Response) => {
   try {
-    const { stripe_secret_key, stripe_webhook_secret } = req.body;
+    const { stripe_secret_key, stripe_webhook_secret, stripe_publishable_key } = req.body;
     
     if (!stripe_secret_key) {
       return res.status(400).json({ error: 'Clave secreta de Stripe requerida' });
@@ -171,8 +181,8 @@ router.post('/stripe', authenticateToken, async (req: any, res: Response) => {
 
     const client = await pool.connect();
     await client.query(
-      'UPDATE businesses SET stripe_secret_key = $1, stripe_webhook_secret = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [stripe_secret_key, stripe_webhook_secret, req.business.id]
+      'UPDATE businesses SET stripe_secret_key = $1, stripe_webhook_secret = $2, stripe_publishable_key = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+      [stripe_secret_key, stripe_webhook_secret, stripe_publishable_key, req.business.id]
     );
     client.release();
 
@@ -182,6 +192,52 @@ router.post('/stripe', authenticateToken, async (req: any, res: Response) => {
 
   } catch (error) {
     console.error('Error configurando Stripe:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Configurar Anthropic API Key
+router.post('/anthropic', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const { anthropic_api_key } = req.body;
+    
+    if (!anthropic_api_key) {
+      return res.status(400).json({ error: 'API Key de Anthropic requerida' });
+    }
+
+    const client = await pool.connect();
+    await client.query(
+      'UPDATE businesses SET anthropic_api_key = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [anthropic_api_key, req.business.id]
+    );
+    client.release();
+
+    res.json({
+      message: 'API Key de Anthropic configurada exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error configurando Anthropic:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Marcar onboarding como completado
+router.post('/onboarding-complete', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const client = await pool.connect();
+    await client.query(
+      'UPDATE businesses SET onboarding_completed = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [req.business.id]
+    );
+    client.release();
+
+    res.json({
+      message: 'Onboarding marcado como completado'
+    });
+
+  } catch (error) {
+    console.error('Error marcando onboarding:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

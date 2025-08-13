@@ -45,7 +45,7 @@ class AuthProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.post(
-        '${ApiConfig.baseUrl}${ApiConfig.login}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.login}',
         data: {'email': email, 'password': password},
         options: Options(headers: ApiConfig.defaultHeaders),
       );
@@ -85,7 +85,7 @@ class AuthProvider extends ChangeNotifier {
 
       final dio = Dio();
       final response = await dio.post(
-        '${ApiConfig.baseUrl}${ApiConfig.register}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.register}',
         data: {
           'name': name,
           'email': email,
@@ -121,7 +121,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final dio = Dio();
       final response = await dio.get(
-        '${ApiConfig.baseUrl}${ApiConfig.profile}',
+        '${ApiConfig.apiBaseUrl}${ApiConfig.profile}',
         options: Options(headers: ApiConfig.authHeaders(_token!)),
       );
 
