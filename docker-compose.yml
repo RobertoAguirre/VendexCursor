@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: vendex_postgres
+    environment:
+      POSTGRES_DB: vendex_claude
+      POSTGRES_USER: vendex_user
+      POSTGRES_PASSWORD: vendex_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vendex_network
+    restart: unless-stopped
+
+  # Backend Node.js
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: vendex_backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://vendex_user:vendex_password@postgres:5432/vendex_claude
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ULTRAMSG_INSTANCE_ID: ${ULTRAMSG_INSTANCE_ID}
+      ULTRAMSG_CLIENT_ID: ${ULTRAMSG_CLIENT_ID}
+      ULTRAMSG_TOKEN: ${ULTRAMSG_TOKEN}
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - vendex_network
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+
+  # Frontend Flutter Web
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vendex_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - vendex_network
+    restart: unless-stopped
+
+  # Nginx reverse proxy (opcional)
+  nginx:
+    image: nginx:alpine
+    container_name: vendex_nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - vendex_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  vendex_network:
+    driver: bridge 
