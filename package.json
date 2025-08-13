@@ -1,18 +1,28 @@
 {
   "name": "vendex-claude-backend",
   "version": "1.0.0",
-  "description": "Backend para asistente de ventas WhatsApp con IA",
+  "description": "Backend para Vendex Claude - Asistente de Ventas WhatsApp",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "jest",
-    "test:db": "node -e \"require('dotenv').config(); const { Pool } = require('pg'); const pool = new Pool({ connectionString: process.env.DATABASE_URL }); pool.query('SELECT 1', (err, res) => { if (err) { console.error('Error:', err.message); process.exit(1); } else { console.log('Database connection successful'); process.exit(0); } });\"",
-    "postinstall": "npm run build"
+    "test:db": "node -e \"require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGODB_URI).then(() => { console.log('Database connection successful'); process.exit(0); }).catch(err => { console.error('Error:', err.message); process.exit(1); });\""
   },
+  "keywords": [
+    "whatsapp",
+    "ai",
+    "sales",
+    "assistant",
+    "claude",
+    "stripe",
+    "mongodb"
+  ],
+  "author": "Vendex Claude Team",
+  "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.59.0",
+    "@anthropic-ai/sdk": "^0.9.1",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -22,8 +32,8 @@
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.17.1",
     "multer": "^1.4.5-lts.1",
-    "pg": "^8.11.3",
     "stripe": "^14.5.0"
   },
   "devDependencies": {
@@ -33,12 +43,11 @@
     "@types/jest": "^29.5.8",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/multer": "^1.4.11",
-    "@types/node": "^20.9.0",
-    "@types/pg": "^8.10.9",
+    "@types/node": "^20.10.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.0.1",
+    "nodemon": "^3.0.2",
     "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.3.2"
   },
   "engines": {
     "node": ">=18.0.0",

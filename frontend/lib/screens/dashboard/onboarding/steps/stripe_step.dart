@@ -21,12 +21,14 @@ class StripeStep extends StatefulWidget {
 class _StripeStepState extends State<StripeStep> {
   final _formKey = GlobalKey<FormState>();
   final _secretKeyController = TextEditingController();
+  final _publishableKeyController = TextEditingController();
   final _webhookSecretController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _secretKeyController.dispose();
+    _publishableKeyController.dispose();
     _webhookSecretController.dispose();
     super.dispose();
   }
@@ -39,6 +41,7 @@ class _StripeStepState extends State<StripeStep> {
     try {
       final success = await context.read<BusinessProvider>().configureStripe(
         secretKey: _secretKeyController.text.trim(),
+        publishableKey: _publishableKeyController.text.trim(),
         webhookSecret: _webhookSecretController.text.trim().isEmpty 
             ? null 
             : _webhookSecretController.text.trim(),
@@ -133,10 +136,11 @@ class _StripeStepState extends State<StripeStep> {
             TextFormField(
               controller: _secretKeyController,
               decoration: const InputDecoration(
-                labelText: 'Stripe Secret Key',
+                labelText: 'Stripe Secret Key *',
                 hintText: 'sk_test_... o sk_live_...',
                 prefixIcon: Icon(Icons.vpn_key),
                 border: OutlineInputBorder(),
+                helperText: 'Encuentra esto en Developers → API Keys',
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -144,6 +148,28 @@ class _StripeStepState extends State<StripeStep> {
                 }
                 if (!value.startsWith('sk_')) {
                   return 'La Secret Key debe comenzar con sk_';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Publishable Key Field
+            TextFormField(
+              controller: _publishableKeyController,
+              decoration: const InputDecoration(
+                labelText: 'Stripe Publishable Key *',
+                hintText: 'pk_test_... o pk_live_...',
+                prefixIcon: Icon(Icons.public),
+                border: OutlineInputBorder(),
+                helperText: 'Encuentra esto en Developers → API Keys',
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'La Publishable Key es requerida';
+                }
+                if (!value.startsWith('pk_')) {
+                  return 'La Publishable Key debe comenzar con pk_';
                 }
                 return null;
               },
@@ -194,7 +220,12 @@ class _StripeStepState extends State<StripeStep> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        '4. Para webhooks: Developers → Webhooks → Add endpoint',
+                        '4. Copia tu "Publishable key" (comienza con pk_test_ o pk_live_)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '5. Para webhooks: Developers → Webhooks → Add endpoint',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),

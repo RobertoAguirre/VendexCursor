@@ -20,55 +20,24 @@ class AssistantStep extends StatefulWidget {
 
 class _AssistantStepState extends State<AssistantStep> {
   final _formKey = GlobalKey<FormState>();
-  final _personalityController = TextEditingController();
+  final _apiKeyController = TextEditingController();
+  String _selectedPersonality = 'friendly';
+  final _customPersonalityController = TextEditingController();
   bool _isLoading = false;
-  String _selectedTemplate = '';
 
-  final List<Map<String, dynamic>> _templates = [
-    {
-      'id': 'friendly',
-      'name': 'Amigable y Cercano',
-      'description': 'Un asistente cálido que construye relaciones personales',
-      'template': 'Eres un asistente de ventas amigable y cercano. Te comunicas de manera cálida y personal, como un amigo que quiere ayudar. Usas emojis ocasionalmente y mantienes un tono conversacional. Tu objetivo es hacer que el cliente se sienta cómodo y confíe en ti.',
-    },
-    {
-      'id': 'professional',
-      'name': 'Profesional y Formal',
-      'description': 'Un asistente serio y confiable para negocios formales',
-      'template': 'Eres un asistente de ventas profesional y formal. Te comunicas de manera seria y confiable, manteniendo un tono respetuoso y empresarial. Eres directo, eficiente y te enfocas en proporcionar información clara y precisa.',
-    },
-    {
-      'id': 'enthusiastic',
-      'name': 'Entusiasta y Energético',
-      'description': 'Un asistente motivador que genera emoción',
-      'template': 'Eres un asistente de ventas entusiasta y energético. Te comunicas con pasión y emoción, generando entusiasmo en el cliente. Usas lenguaje motivador y te enfocas en los beneficios emocionales de los productos.',
-    },
-    {
-      'id': 'expert',
-      'name': 'Experto Técnico',
-      'description': 'Un asistente especializado con conocimiento profundo',
-      'template': 'Eres un asistente de ventas experto y técnico. Tienes conocimiento profundo de los productos y te comunicas con autoridad. Proporcionas información detallada y técnica, ayudando al cliente a tomar decisiones informadas.',
-    },
-    {
-      'id': 'custom',
-      'name': 'Personalizado',
-      'description': 'Define tu propia personalidad',
-      'template': '',
-    },
-  ];
+  final Map<String, String> _personalities = {
+    'friendly': 'Amigable y cercano',
+    'professional': 'Profesional y formal',
+    'enthusiastic': 'Entusiasta y motivador',
+    'expert': 'Experto y técnico',
+    'custom': 'Personalizado',
+  };
 
   @override
   void dispose() {
-    _personalityController.dispose();
+    _apiKeyController.dispose();
+    _customPersonalityController.dispose();
     super.dispose();
-  }
-
-  void _selectTemplate(String templateId) {
-    setState(() {
-      _selectedTemplate = templateId;
-      final template = _templates.firstWhere((t) => t['id'] == templateId);
-      _personalityController.text = template['template'] ?? '';
-    });
   }
 
   Future<void> _configureAssistant() async {
@@ -77,16 +46,38 @@ class _AssistantStepState extends State<AssistantStep> {
     setState(() => _isLoading = true);
 
     try {
-      final success = await context.read<BusinessProvider>().configureAssistantPersonality(
-        _personalityController.text.trim(),
+      final businessProvider = context.read<BusinessProvider>();
+      
+      // Configurar API key de Anthropic
+      final apiKeySuccess = await businessProvider.configureAnthropic(
+        _apiKeyController.text.trim(),
       );
 
-      if (success) {
+      if (!apiKeySuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error configurando API key de Anthropic'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Configurar personalidad
+      String personality = _selectedPersonality == 'custom' 
+          ? _customPersonalityController.text.trim()
+          : _personalities[_selectedPersonality]!;
+
+      final personalitySuccess = await businessProvider.configureAssistantPersonality(
+        personality,
+      );
+
+      if (personalitySuccess) {
         widget.onNext();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error configurando el asistente. Intenta de nuevo.'),
+            content: Text('Error configurando personalidad del asistente'),
             backgroundColor: Colors.red,
           ),
         );
@@ -114,7 +105,7 @@ class _AssistantStepState extends State<AssistantStep> {
           children: [
             // Header
             const Text(
-              'Personalizar Asistente IA',
+              'Configurar Asistente IA',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -122,7 +113,7 @@ class _AssistantStepState extends State<AssistantStep> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Define la personalidad de tu asistente de ventas para que coincida con tu marca.',
+              'Configura la personalidad de tu asistente y conecta con Claude AI.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -130,35 +121,30 @@ class _AssistantStepState extends State<AssistantStep> {
             ),
             const SizedBox(height: 32),
 
-            // Templates Section
-            const Text(
-              'Plantillas de Personalidad',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            // Anthropic API Key
+            TextFormField(
+              controller: _apiKeyController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Anthropic API Key *',
+                hintText: 'sk-ant-...',
+                prefixIcon: Icon(Icons.key),
+                border: OutlineInputBorder(),
+                helperText: 'Obtén tu API key en console.anthropic.com',
               ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'API Key requerida';
+                }
+                if (!value.startsWith('sk-ant-')) {
+                  return 'La API Key debe comenzar con sk-ant-';
+                }
+                return null;
+              },
             ),
-            const SizedBox(height: 16),
-
-            // Template Cards
-            ...(_templates.map((template) => Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: RadioListTile<String>(
-                title: Text(
-                  template['name'],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(template['description']),
-                value: template['id'],
-                groupValue: _selectedTemplate,
-                onChanged: (value) => _selectTemplate(value!),
-                activeColor: Theme.of(context).primaryColor,
-              ),
-            )).toList()),
-
             const SizedBox(height: 24),
 
-            // Custom Personality Field
+            // Personalidad del asistente
             const Text(
               'Personalidad del Asistente',
               style: TextStyle(
@@ -166,34 +152,44 @@ class _AssistantStepState extends State<AssistantStep> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Describe cómo quieres que se comporte tu asistente:',
-              style: TextStyle(color: Colors.grey),
-            ),
             const SizedBox(height: 16),
 
-            TextFormField(
-              controller: _personalityController,
-              maxLines: 6,
-              decoration: const InputDecoration(
-                hintText: 'Ejemplo: Eres un asistente amigable que ayuda a los clientes a encontrar los mejores productos...',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'La personalidad del asistente es requerida';
-                }
-                if (value.trim().length < 50) {
-                  return 'La descripción debe tener al menos 50 caracteres';
-                }
-                return null;
+            // Opciones de personalidad
+            ...(_personalities.entries.map((entry) => RadioListTile<String>(
+              title: Text(entry.value),
+              value: entry.key,
+              groupValue: _selectedPersonality,
+              onChanged: (value) {
+                setState(() {
+                  _selectedPersonality = value!;
+                });
               },
-            ),
-            const SizedBox(height: 16),
+            )).toList()),
 
-            // Tips Card
+            // Campo personalizado
+            if (_selectedPersonality == 'custom') ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _customPersonalityController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Describe la personalidad personalizada',
+                  hintText: 'Ej: Eres un vendedor experto en tecnología que ayuda a clientes a encontrar la mejor solución...',
+                  border: OutlineInputBorder(),
+                  helperText: 'Describe cómo quieres que se comporte tu asistente',
+                ),
+                validator: (value) {
+                  if (_selectedPersonality == 'custom' && (value == null || value.trim().isEmpty)) {
+                    return 'Descripción de personalidad requerida';
+                  }
+                  return null;
+                },
+              ),
+            ],
+
+            const SizedBox(height: 24),
+
+            // Información sobre Claude
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -206,10 +202,10 @@ class _AssistantStepState extends State<AssistantStep> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.lightbulb, color: Colors.orange.shade600),
+                      Icon(Icons.psychology, color: Colors.orange.shade600),
                       const SizedBox(width: 8),
                       const Text(
-                        'Consejos para una buena personalidad:',
+                        '¿Qué es Claude AI?',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -217,14 +213,50 @@ class _AssistantStepState extends State<AssistantStep> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text('• Define el tono de comunicación (formal, casual, amigable)'),
-                  const Text('• Especifica cómo debe tratar a los clientes'),
-                  const Text('• Incluye valores de tu marca (confianza, innovación, etc.)'),
-                  const Text('• Define el nivel de formalidad y uso de emojis'),
-                  const Text('• Especifica si debe ser técnico o simple'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Claude es una IA avanzada de Anthropic que entiende el contexto '
+                    'y puede mantener conversaciones naturales. Tu asistente usará '
+                    'Claude para responder a tus clientes de forma inteligente.',
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ],
               ),
+            ),
+            const SizedBox(height: 24),
+
+            // Consejos
+            ExpansionTile(
+              title: const Text('Consejos para una buena personalidad'),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        '• Sé específico sobre el tono (amigable, profesional, etc.)',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '• Incluye información sobre tu negocio y productos',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '• Define cómo debe manejar objeciones y preguntas',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '• Especifica si debe ser proactivo en las ventas',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 32),
 

@@ -20,11 +20,15 @@ class WhatsAppStep extends StatefulWidget {
 class _WhatsAppStepState extends State<WhatsAppStep> {
   final _formKey = GlobalKey<FormState>();
   final _whatsappController = TextEditingController();
+  final _instanceIdController = TextEditingController();
+  final _tokenController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _whatsappController.dispose();
+    _instanceIdController.dispose();
+    _tokenController.dispose();
     super.dispose();
   }
 
@@ -38,7 +42,9 @@ class _WhatsAppStepState extends State<WhatsAppStep> {
     try {
       final businessProvider = context.read<BusinessProvider>();
       final success = await businessProvider.configureWhatsApp(
-        _whatsappController.text.trim(),
+        whatsappNumber: _whatsappController.text.trim(),
+        ultramsgInstanceId: _instanceIdController.text.trim(),
+        ultramsgToken: _tokenController.text.trim(),
       );
 
       if (success && mounted) {
@@ -167,6 +173,43 @@ class _WhatsAppStepState extends State<WhatsAppStep> {
                 }
                 if (!value.startsWith('+')) {
                   return 'Debe incluir el código de país (ej: +1)';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Campo de Instance ID
+            TextFormField(
+              controller: _instanceIdController,
+              decoration: const InputDecoration(
+                labelText: 'UltraMsg Instance ID *',
+                prefixIcon: Icon(Icons.key),
+                hintText: 'ej: 1234567890',
+                helperText: 'Encuentra esto en tu panel de UltraMsg',
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Instance ID requerido';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Campo de Token
+            TextFormField(
+              controller: _tokenController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'UltraMsg Token *',
+                prefixIcon: Icon(Icons.lock),
+                hintText: 'Token de autenticación',
+                helperText: 'Encuentra esto en tu panel de UltraMsg',
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Token requerido';
                 }
                 return null;
               },

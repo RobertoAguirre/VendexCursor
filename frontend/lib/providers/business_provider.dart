@@ -77,14 +77,22 @@ class BusinessProvider extends ChangeNotifier {
   bool _checkOnboardingStatus() {
     if (_business == null) return false;
     
-    // Verificar que tenga WhatsApp, Stripe, personalidad y al menos un producto
+    // Verificar que tenga todas las credenciales necesarias
     return _business!.whatsappNumber != null &&
+           _business!.ultramsgInstanceId != null &&
+           _business!.ultramsgToken != null &&
            _business!.stripeSecretKey != null &&
+           _business!.stripePublishableKey != null &&
+           _business!.anthropicApiKey != null &&
            _business!.assistantPersonality != null &&
            (_stats?.products ?? 0) > 0;
   }
 
-  Future<bool> configureWhatsApp(String whatsappNumber) async {
+  Future<bool> configureWhatsApp({
+    required String whatsappNumber,
+    required String ultramsgInstanceId,
+    required String ultramsgToken,
+  }) async {
     try {
       _isLoading = true;
       _error = null;
@@ -101,7 +109,11 @@ class BusinessProvider extends ChangeNotifier {
       final dio = Dio();
       final response = await dio.post(
         '${ApiConfig.apiBaseUrl}${ApiConfig.whatsapp}',
-        data: {'whatsapp_number': whatsappNumber},
+        data: {
+          'whatsapp_number': whatsappNumber,
+          'ultramsg_instance_id': ultramsgInstanceId,
+          'ultramsg_token': ultramsgToken,
+        },
         options: Options(headers: ApiConfig.authHeaders(token)),
       );
 
@@ -121,6 +133,7 @@ class BusinessProvider extends ChangeNotifier {
 
   Future<bool> configureStripe({
     required String secretKey,
+    required String publishableKey,
     String? webhookSecret,
   }) async {
     try {
@@ -141,6 +154,7 @@ class BusinessProvider extends ChangeNotifier {
         '${ApiConfig.apiBaseUrl}${ApiConfig.stripe}',
         data: {
           'stripe_secret_key': secretKey,
+          'stripe_publishable_key': publishableKey,
           'stripe_webhook_secret': webhookSecret,
         },
         options: Options(headers: ApiConfig.authHeaders(token)),
@@ -153,6 +167,41 @@ class BusinessProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       _error = 'Error configurando Stripe: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> configureAnthropic(String apiKey) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final authProvider = AuthProvider();
+      final token = authProvider.token;
+      
+      if (token == null) {
+        _error = 'No hay token de autenticación';
+        return false;
+      }
+
+      final dio = Dio();
+      final response = await dio.post(
+        '${ApiConfig.apiBaseUrl}/api/business/anthropic',
+        data: {'anthropic_api_key': apiKey},
+        options: Options(headers: ApiConfig.authHeaders(token)),
+      );
+
+      if (response.statusCode == 200) {
+        await loadBusinessInfo(); // Recargar datos
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = 'Error configurando Anthropic: $e';
       return false;
     } finally {
       _isLoading = false;
@@ -241,9 +290,39 @@ class BusinessProvider extends ChangeNotifier {
     }
   }
 
-  void markOnboardingComplete() {
-    _onboardingCompleted = true;
-    notifyListeners();
+  Future<bool> markOnboardingComplete() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final authProvider = AuthProvider();
+      final token = authProvider.token;
+      
+      if (token == null) {
+        _error = 'No hay token de autenticación';
+        return false;
+      }
+
+      final dio = Dio();
+      final response = await dio.post(
+        '${ApiConfig.apiBaseUrl}/api/business/onboarding-complete',
+        options: Options(headers: ApiConfig.authHeaders(token)),
+      );
+
+      if (response.statusCode == 200) {
+        _onboardingCompleted = true;
+        await loadBusinessInfo(); // Recargar datos
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = 'Error marcando onboarding como completado: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   void clearError() {
